@@ -1,0 +1,8 @@
+---
+host_k8s-prd-master: k8s-prd-master
+host_k8s-prd-node-01: k8s-prd-node-01
+host_k8s-prd-node-02: k8s-prd-node-02
+
+ip_k8s-prd-master: 192.168.106.145
+ip_k8s-prd-node-01: 192.168.106.146
+ip_k8s-prd-node-02: 192.168.106.147

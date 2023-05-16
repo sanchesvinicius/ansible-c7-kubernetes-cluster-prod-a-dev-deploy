@@ -1,0 +1,23 @@
+[dev]
+k8s-dev-master ansible_host=192.168.106.135
+k8s-dev-node-01 ansible_host=192.168.106.136
+k8s-dev-node-02 ansible_host=192.168.106.137
+
+[dev-master]
+k8s-dev-master ansible_host=192.168.106.135
+
+[dev-nodes]
+k8s-dev-node-01
+k8s-dev-node-02
+
+[prd]
+k8s-prd-master ansible_host=192.168.106.145
+k8s-prd-node-01 ansible_host=192.168.106.146
+k8s-prd-node-02 ansible_host=192.168.106.147
+
+[prd-master]
+k8s-prd-master
+
+[prd-nodes]
+k8s-prd-node-01
+k8s-prd-node-02

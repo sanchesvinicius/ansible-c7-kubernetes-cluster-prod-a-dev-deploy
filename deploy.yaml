@@ -1,0 +1,12 @@
+---
+- hosts: dev, dev-nodes
+  remote_user: root
+  become: true
+  roles:
+    - k8s-dev
+
+- hosts: prd, prd-nodes
+  remote_user: root
+  become: true
+  roles:
+    - k8s-prd

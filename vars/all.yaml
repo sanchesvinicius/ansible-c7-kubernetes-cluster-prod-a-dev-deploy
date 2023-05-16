@@ -1,0 +1,16 @@
+---
+host_k8s-dev-master: k8s-dev-master
+host_k8s-dev-node-01: k8s-dev-node-01
+host_k8s-dev-node-02: k8s-dev-node-02
+
+ip_k8s-dev-master: 192.168.106.135
+ip_k8s-dev-node-01: 192.168.106.136
+ip_k8s-dev-node-02: 192.168.106.137
+
+host_k8s-prd-master: k8s-prd-master
+host_k8s-prd-node-01: k8s-prd-node-01
+host_k8s-prd-node-02: k8s-prd-node-02
+
+ip_k8s-prd-master: 192.168.106.145
+ip_k8s-prd-node-01: 192.168.106.146
+ip_k8s-prd-node-02: 192.168.106.147

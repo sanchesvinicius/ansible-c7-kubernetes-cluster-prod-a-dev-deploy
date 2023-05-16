@@ -1,0 +1,146 @@
+---
+- name: Desabilita serviço firewalld
+  ansible.builtin.service:
+    name: firewalld
+    enabled: false
+    state: stopped
+
+- name: Desabilita selinux
+  selinux:
+    state: disabled
+
+# O ARQUIVO HOSTS.YAML DEVE CONTER O HOSTNAME SEGUIDO DA VARIÁVEL ANSIBLE_HOST
+- name: Adiciona hostname e ip ao arquivo /etc/hosts.
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ item }}$'
+    line: "{{ hostvars[item].ansible_host }} {{item}}"
+    state: present
+  when: hostvars[item].ansible_host is defined
+  with_items: "{{ groups.all }}"
+
+- name: Adiciona os prerequisitos do centos
+  ansible.builtin.shell: |
+    swapoff -a
+    modprobe br_netfilter
+    echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+    echo '1' > /proc/sys/net/ipv4/ip_forward
+     
+    touch /etc/sysctl.d/k8s.conf
+                
+    cat << EOF > /etc/sysctl.d/k8s.conf
+    {
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+    }
+    EOF
+                 
+    sysctl --system
+
+- name: Removendo ponto de montagem swap em /etc/fstab
+  mount:
+    name: "{{ item }}"
+    fstype: swap
+    state: absent
+  with_items:
+    - swap
+
+- name: Instala prerequisitos do centos
+  ansible.builtin.command: "yum install -y yum-utils device-mapper-persistent-data lvm2"
+   
+- name: Cria repositório docker-ce.repo
+  ansible.builtin.command: "yum-config-manager -y --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
+
+- name: Instalar docker-ce
+  ansible.builtin.yum:
+    name: 
+      - docker-ce
+
+- name: Copia arquivo config.toml
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^disabled_plugins = \[\"cri\"\]$'
+    line: 'disabled_plugins = [" "]'
+
+- name: Desabilita serviço docker
+  ansible.builtin.service:
+    service: docker
+    enabled: false
+    state: stopped
+
+- name: Habilita containerd
+  ansible.builtin.service:
+    service: containerd
+    enabled: true
+    state: started
+
+- name: Cria arquivo de repositório kubernetes.repo
+  ansible.builtin.yum_repository:
+    name: Kubernetes
+    description: Kubernetes repo
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    enabled: yes
+    gpgcheck: no
+     
+- name: Instala kubelet kubeadm kubectl
+  ansible.builtin.yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - kubeadm
+    - kubelet
+    - kubectl
+
+- name: Habilitando serviço kubelet
+  ansible.builtin.service:
+    name: kubelet
+    enabled: true
+    state: started
+
+- name: Criando pasta .kube
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+    mode: 0755
+
+- name: Iniciando cluster com kube init
+  ansible.builtin.shell: 'kubeadm init'
+  args:
+    executable: /bin/bash
+  register: kubeadm
+  when: inventory_hostname == 'k8s-dev-master'
+
+- name: Copia arquivo de configuração config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf 
+    dest: /root/.kube/config
+    remote_src: yes
+  when: inventory_hostname == 'k8s-dev-master'
+
+- name: Deploy do pod flannel.
+  ansible.builtin.shell:
+    cmd: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  when: inventory_hostname == 'k8s-dev-master'
+
+- name: Gera token para adicionar os nodes no cluster dev
+  ansible.builtin.shell: "kubeadm token create --print-join-command > /tmp/kubeadmjoin.sh 2> /dev/null"
+  args:
+    executable: /bin/bash
+  when: inventory_hostname == 'k8s-dev-master'
+
+- name: Envia arquivo kubeadmjoin.sh para a o servidor que roda o ansible 
+  ansible.builtin.fetch:
+    src: /tmp/kubeadmjoin.sh
+    dest: /tmp/kubeadmjoin.sh
+  when: inventory_hostname == 'k8s-dev-master'
+
+- name: Envia arquivo kubeadmjoin.sh para os nodes dev
+  ansible.builtin.copy:
+    src: /tmp/kubeadmjoin.sh/k8s-dev-master/tmp/kubeadmjoin.sh
+    dest: /tmp/kubeadmjoin.sh
+  when: inventory_hostname in groups["dev-nodes"]
+
+- name: Adiciona os nodes ao cluster dev
+  ansible.builtin.shell:
+    cmd: sh /tmp/kubeadmjoin.sh
+  when: inventory_hostname in groups["dev-nodes"]
