@@ -1,2 +1,1 @@
-# centos7-kubernetes-cluster-deploy
-Efetuar deploy de um cluster kubernetes em centos7 com ansible.
+Efetua o deploy de um cluster kubernetes de produção, e desenvolvimento em centos7 com ansible.
